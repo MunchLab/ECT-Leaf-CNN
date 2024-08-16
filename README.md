@@ -35,19 +35,26 @@ cd ECT-Leaf-CNN
 
 
 ## Contents
-
-- `cnn`: python files for the CNN model.
-    - `dataloaders.py`: 
-    - `models.py`:
-    - `utils.py`:
+    
 - `leaf-example-tutorial`:
     - `Tutorial-ECT_for_example_dataset.ipynb`: (Jupyter notebook) Tutorial showing how to load in leaf shape data from `example_data` and train a CNN model for binary classification.
     - `example_data`
         - `outline_input`: directory contains the input leaf shape data in the form of npy files. Each file contains an ordered list of (x,y)-coordinates outlining the leaf shape.
         - `ect_output`: directory where the output computed ECT is written for each sample in `outline_input`.
-        
+    - `images`: Directory contains images for the jupyter notebook tutorial.    
     - `outputs`: Directory where outputs from the example jupyter notebooks are written.
-
-- `scripts`: Python scripts to perform all of the data laoding and classification. _These are not cleaned up and organized_.
-
+    - `dataloaders.py`: 
+    - `models.py`:
+    - `utils.py`:
+- `scripts`: Python scripts to perform all of the data loading and classification. _These are not cleaned up and organized_.
+- `data`
+    - `AllLeaf_coordinates`
+    - `ALLleaves`
+    - `ALLleaves_ECT`
+    - `ALLleaves_images_small`
+    - `leafgraph_ECT`
+    - `leafgraph_images_small`
+    - `MPEG7original_subset`
+    - `MPEG7shap_ECT`
+    - `MPEG7shap_images_small`
 
