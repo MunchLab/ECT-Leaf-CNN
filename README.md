@@ -17,7 +17,7 @@ Traditional methods, however, often rely on direct measurements and limited stat
 In this example application, we harness the effectiveness of ECT representations and the power of convolutional neural network models to quantify the naturally occurring widespread variation in leaf morphology.
 
 
-Here we present `ECT-Leaf-CNN`, a repository of python code used to classify ECT summaries of leaf shape, as described in Chapters 4 and 5 of [this dissertation](https://ezproxy.msu.edu/login?url=https://www.proquest.com/dissertations-theses/leveraging-topological-structure-data/docview/3083089653/se-2?accountid=12598).
+Here we present `ECT-Leaf-CNN`, a repository of python code used to classify ECT summaries of leaf shape, as described in Chapters 4 and 5 of [this dissertation](https://www.proquest.com/openview/b5047898828a759dba5de90c460bde39/1?pq-origsite=gscholar&cbl=18750&diss=y). 
 
 
 ## To install
@@ -37,7 +37,7 @@ cd ECT-Leaf-CNN
 ## Contents
 
 - `cnn`: python files for the CNN model.
-    - `dataloaders.py`:
+    - `dataloaders.py`: 
     - `models.py`:
     - `utils.py`:
 - `leaf-example-tutorial`:
@@ -46,10 +46,8 @@ cd ECT-Leaf-CNN
         - `outline_input`: directory contains the input leaf shape data in the form of npy files. Each file contains an ordered list of (x,y)-coordinates outlining the leaf shape.
         - `ect_output`: directory where the output computed ECT is written for each sample in `outline_input`.
         
-    - `outputs`:
-        - Directory where outputs from the example jupyter notebooks are written.
+    - `outputs`: Directory where outputs from the example jupyter notebooks are written.
 
-- `scripts`:
-    - Python scripts rather to perform all of the data laoding and classification. _These are not cleaned up and organized_.
+- `scripts`: Python scripts to perform all of the data laoding and classification. _These are not cleaned up and organized_.
 
 
