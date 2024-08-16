@@ -18,7 +18,7 @@ In this example application, we harness the effectiveness of ECT representations
 
 
 Here we present `ECT-Leaf-CNN`, a repository of python code used to classify ECT summaries of leaf shape, as described in Chapters 4 and 5 of [this dissertation](https://www.proquest.com/openview/b5047898828a759dba5de90c460bde39/1?pq-origsite=gscholar&cbl=18750&diss=y).
-Note that the tutorial example contained in `leaf-example-tutorial` utilizes the [ect](https://munchlab.github.io/ect/index.html#) python package for all ECT computation, which can be installed using `pip install ect`. However, the experiments and code in `scripts` are use a local version of code for ect computation (in `ect_sarah.py`).    
+Note that the tutorial example contained in `leaf-example-tutorial` utilizes the [ect](https://munchlab.github.io/ect/index.html#) python package for all ECT computation, which can be installed using `pip install ect`.
 
 ## To install
 
@@ -46,15 +46,4 @@ cd ECT-Leaf-CNN
     - `dataloaders.py`: 
     - `models.py`:
     - `utils.py`:
-- `scripts`: Python scripts to perform all of the data loading and classification. _These are not cleaned up and organized_.
-- `data`
-    - `AllLeaf_coordinates`
-    - `ALLleaves`
-    - `ALLleaves_ECT`
-    - `ALLleaves_images_small`
-    - `leafgraph_ECT`
-    - `leafgraph_images_small`
-    - `MPEG7original_subset`
-    - `MPEG7shap_ECT`
-    - `MPEG7shap_images_small`
 
