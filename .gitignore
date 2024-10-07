@@ -1,3 +1,7 @@
+# Ignore example data
+example_data/ect_output/
+outputs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
