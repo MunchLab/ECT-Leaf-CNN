@@ -33,26 +33,28 @@ class SaveBestModel:
     Adapted from https://debuggercafe.com/saving-and-loading-the-best-model-in-pytorch/
     """
     def __init__(
-        self, best_valid_loss=float('inf') #initialize to infinity so the model loss must be less than existing lowest valid loss
+        self, best_valid_loss=float('inf'), log_level="INFO" #initialize to infinity so the model loss must be less than existing lowest valid loss
     ):
         self.best_valid_loss = best_valid_loss
+        self.log_level = log_level == True or str(log_level).upper() == 'INFO'
         
     def __call__(
         self, current_valid_loss, 
-        epoch, model, optimizer, criterion
+        epoch, model, optimizer, criterion, output_dir='outputs'
     ):
         if current_valid_loss < self.best_valid_loss:
             self.best_valid_loss = current_valid_loss
-            print(f"\nBest validation loss: {self.best_valid_loss}")
-            print(f"\nSaving best model for epoch: {epoch}\n")
+            if self.log_level:
+                print(f"\nBest validation loss: {self.best_valid_loss}")
+                print(f"\nSaving best model for epoch: {epoch}\n")
             #save model 
             torch.save({'epoch': epoch,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
-                         'loss': criterion,}, 'outputs/best_model.pth')
+                         'loss': criterion,}, os.path.join(output_dir,'best_model.pth'))
             
 
-def save_model(epochs, model, optimizer, criterion):
+def save_model(epochs, model, optimizer, criterion, output_dir='outputs'):
     """
     Function to save the trained model. 
     Adapted from https://debuggercafe.com/saving-and-loading-the-best-model-in-pytorch/
@@ -63,15 +65,15 @@ def save_model(epochs, model, optimizer, criterion):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': criterion,
-                }, 'outputs/final_model.pth')
+                }, os.path.join(output_dir,'final_model.pth'))
     
 
-def save_plots(train_acc, valid_acc, train_loss, valid_loss):
+def save_plots(train_acc, valid_acc, train_loss, valid_loss, output_dir='outputs'):
     """
     Function to save the loss and accuracy plots.
     """
     # accuracy plots
-    plt.figure(figsize=(10, 7))
+    accuracy = plt.figure(figsize=(10, 7))
     plt.plot(
         train_acc, color='green', linestyle='-', 
         label='train accuracy'
@@ -84,10 +86,10 @@ def save_plots(train_acc, valid_acc, train_loss, valid_loss):
     plt.ylabel('Accuracy')
     plt.legend()
     plt.title('Max validation accuracy: '+ "%.2f%%" % (np.max(valid_acc)))
-    plt.savefig('outputs/accuracy.png',dpi=1000, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir,'accuracy.png'), dpi=1000, bbox_inches='tight')
     
     # loss plots
-    plt.figure(figsize=(10, 7))
+    loss = plt.figure(figsize=(10, 7))
     plt.plot(
         train_loss, color='orange', linestyle='-', 
         label='train loss'
@@ -99,9 +101,10 @@ def save_plots(train_acc, valid_acc, train_loss, valid_loss):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig('outputs/loss.png',dpi=1000, bbox_inches='tight')
+    plt.savefig( os.path.join(output_dir,'loss.png'), dpi=1000, bbox_inches='tight')
+    return accuracy, loss
 
-def save_cf(y_pred,y_true,classes):
+def save_cf(y_pred,y_true,classes,output_dir='outputs'):
     """
     Function to save the confusion matrix plots.
     """
@@ -113,11 +116,11 @@ def save_cf(y_pred,y_true,classes):
     sn.heatmap(cf_matrix, annot=True, fmt=".3f", cmap = 'Blues', norm=LogNorm(),xticklabels=classes,yticklabels=classes)
     plt.xlabel('Predicted Label', weight='bold')
     plt.ylabel('True Label', weight='bold')
-    plt.savefig('outputs/cf_norm_logscale.png', dpi=1000, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir,'cf_norm_logscale.png'), dpi=1000, bbox_inches='tight')
 
     # SAVE THE CLF REPORT   
     clf_report = pd.DataFrame(classification_report(y_true,y_pred, output_dict=True))
-    clf_report.to_csv('outputs/outputCLFreport.csv')
+    clf_report.to_csv(os.path.join(output_dir,'outputCLFreport.csv'))
     print("Test Result:\n================================================")        
     print(f"Accuracy Score: {accuracy_score(y_true,y_pred,) * 100:.2f}%")
     print("_______________________________________________")

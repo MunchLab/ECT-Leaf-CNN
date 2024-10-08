@@ -1,3 +1,7 @@
+# Ignore example data
+leaf-example-tutorial/example_data/ect_output/
+leaf-example-tutorial/outputs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
