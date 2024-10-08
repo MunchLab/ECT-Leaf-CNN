@@ -19,3 +19,8 @@ pip install ect
 
 # To install the jupyter kernel for the environment:
 python -m ipykernel install --user --name=$env
+
+# If this does not work, try without --user flag:
+
+python -m ipykernel install --name=$env
+```
