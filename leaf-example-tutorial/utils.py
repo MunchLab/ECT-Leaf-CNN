@@ -68,12 +68,15 @@ def save_model(epochs, model, optimizer, criterion, output_dir='outputs'):
                 }, os.path.join(output_dir,'final_model.pth'))
     
 
-def save_plots(train_acc, valid_acc, train_loss, valid_loss, output_dir='outputs'):
+def save_plots(
+      train_acc, valid_acc, train_loss,valid_loss,
+      fig_size=(10, 7), dpi=300,
+      output_dir='outputs'):
     """
     Function to save the loss and accuracy plots.
     """
     # accuracy plots
-    accuracy = plt.figure(figsize=(10, 7))
+    accuracy = plt.figure(figsize=fig_size)
     plt.plot(
         train_acc, color='green', linestyle='-', 
         label='train accuracy'
@@ -86,7 +89,7 @@ def save_plots(train_acc, valid_acc, train_loss, valid_loss, output_dir='outputs
     plt.ylabel('Accuracy')
     plt.legend()
     plt.title('Max validation accuracy: '+ "%.2f%%" % (np.max(valid_acc)))
-    plt.savefig(os.path.join(output_dir,'accuracy.png'), dpi=1000, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir,'accuracy.png'), dpi=dpi, bbox_inches='tight')
     
     # loss plots
     loss = plt.figure(figsize=(10, 7))
@@ -101,10 +104,13 @@ def save_plots(train_acc, valid_acc, train_loss, valid_loss, output_dir='outputs
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig( os.path.join(output_dir,'loss.png'), dpi=1000, bbox_inches='tight')
+    plt.savefig( os.path.join(output_dir,'loss.png'), dpi=300, bbox_inches='tight')
     return accuracy, loss
 
-def save_cf(y_pred,y_true,classes,output_dir='outputs'):
+def save_cf(
+      y_pred,y_true,classes,
+      figsize=(12,7), dpi=300,
+      output_dir='outputs'):
     """
     Function to save the confusion matrix plots.
     """
@@ -116,7 +122,7 @@ def save_cf(y_pred,y_true,classes,output_dir='outputs'):
     sn.heatmap(cf_matrix, annot=True, fmt=".3f", cmap = 'Blues', norm=LogNorm(),xticklabels=classes,yticklabels=classes)
     plt.xlabel('Predicted Label', weight='bold')
     plt.ylabel('True Label', weight='bold')
-    plt.savefig(os.path.join(output_dir,'cf_norm_logscale.png'), dpi=1000, bbox_inches='tight')
+    plt.savefig(os.path.join(output_dir,'cf_norm_logscale.png'), dpi=300, bbox_inches='tight')
 
     # SAVE THE CLF REPORT   
     clf_report = pd.DataFrame(classification_report(y_true,y_pred, output_dict=True))
