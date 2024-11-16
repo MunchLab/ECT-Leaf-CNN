@@ -36,7 +36,9 @@ def train(
     train_running_loss = 0.0
     train_running_correct = 0
     counter = 0
-    for data in train_loader:
+
+    log_tqdm = lambda x: ( tqdm(x, total=len(train_loader)) if log_level else enumerate(x), )[0]
+    for data in log_tqdm(train_loader):
         counter += 1
         image, labels = data
         image = image.to(device)
@@ -108,8 +110,11 @@ def find_numpy_files(directory):
     return numpy_files
 
 # Compute the ECT for given numpy file.
-def parallel_compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, global_bound_radius=2.9092515639765497):
+def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_level="INFO", global_bound_radius=2.9092515639765497):
     from ect import ECT, EmbeddedGraph
+
+    if log_level:
+        print(f'Computing ECT for {class_name}')
 
     G = EmbeddedGraph()
     coords = np.load(file_path)
@@ -131,24 +136,21 @@ def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ec
     '''
     Generate the ECT dataset for the given input data.
     The input data should be in numpy format.
-    The ect generation is performed in parallel for each file found in the input directory.
+    Usage:
+        generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ect_output/', global_bound_radius=2.9092515639765497, in_memory=False, log_level='INFO')
+    Parameters:
+        num_dirs: int, number of directions for ECT calculation.
+        num_thresh: int, number of thresholds for ECT calculation.
+        in_path: str, path to the input data directory.
+        out_path: str, path to save the ECT dataset. Optional, default is 'example_data/ect_output/'.
+        global_bound_radius: float, global bounding radius for the ECT calculation. Optional, default is 2.9092515639765497.
+        in_memory: bool,
+            If True, the calculated ECT dataset is returned as a dictionary with class names as key and list of numpy arrays as the values.
+            ECTs are not written to files. Optional, default is False.
+        log_level: str or bool, if True or 'INFO', print progress messages
     '''
 
     log_level = log_level == True or str(log_level).upper() == 'INFO'
-
-    # To avoid re-calculating the ECT for the same parameters.
-    # Check previously saved settings.
-    setting_path = os.path.join(out_path, '.ect_settings')
-    if os.path.exists(setting_path):
-        f = open(os.path.join(setting_path), 'r').readlines()
-        settings = {}
-        for line in f:
-            key, value = line.strip().split('=')
-            settings[key] = float(value)
-        if settings['num_dirs'] == num_dirs and settings['num_thresh'] == num_thresh and settings['global_bound_radius'] == global_bound_radius:
-            if log_level:
-                print('ECT parameters match the saved settings. Skipping ECT calculation.')
-            return
 
     if type(in_path) == dict:
         # If input is already a dictionary, we assume that the dict values is a list of numpy file path.
@@ -177,32 +179,18 @@ def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ec
                 os.path.join(out_path, class_name),
                 exist_ok=True
             )
-
-    parallel_ect_arguments = [
-        (class_name, file_path, num_dirs, num_thresh, out_file_root)
-            for class_name, files in input_numpy_files.items()
-            for file_path in files
+    
+    log_levels = [ [ log_level if i == 0 else False for i,_  in enumerate(files)] for files in input_numpy_files.values()]
+    ect_arguments = [
+        (class_name, file_path, num_dirs, num_thresh, out_file_root, ll)
+            for lls, (class_name, files) in zip( log_levels, input_numpy_files.items() )
+            for ll, file_path in zip(lls, files)
     ]
     
-    ects = [ parallel_compute_ect(*i) for i in parallel_ect_arguments ]
-    
-    # For my laptop this slowed down the calculation rather than speed it up.
-    # Perhaps hpcc will benefit from this.
-    # with ThreadPool(cpu_count()) as p:
-    #     ects = [ i for i in  p.map(
-    #         lambda x: parallel_compute_ect(*x), 
-    #         parallel_ect_arguments,
-    #         chunksize=len(parallel_ect_arguments)//cpu_count()
-    #     ) ]
+    ects = [ compute_ect(*i) for i in ect_arguments ]
     
     if in_memory:
         data = {a:b for a,b in ects}
-    else:
-        with open(os.path.join(out_path, '.ect_settings'), 'w') as f:
-            f.write(f'num_dirs={num_dirs}\nnum_thresh={num_thresh}\nglobal_bound_radius={global_bound_radius}')
-
-    # Note the syntax of inline if-else statement.
-    # value_if_true if condition else value_if_false
     return data if in_memory else None
 
 # model, valid_loader, lossfcn
@@ -210,21 +198,53 @@ def report_trained_model(
         num_dirs, num_thresh,
         train_dataset, train_loader, test_loader, test_dataset,
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
-        model_path= 'outputs/best_model.pth'
+        model_path= 'outputs/best_model.pth',
+        output_cf='outputs/confusion_matrix.png',
+        output_report='outputs/outputCLFreport.csv',
+        log_level='INFO'
 ):
+    """
+    Function to report the trained model.
+    Usage:
+        report_trained_model(
+            num_dirs, num_thresh,
+            train_dataset, train_loader, test_loader, test_dataset,
+            device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+            model_path= 'outputs/best_model.pth',
+            output_cf='outputs/confusion_matrix.png',
+            output_report='outputs/outputCLFreport.csv',
+            log_level='INFO'
+        )
+    Parameters:
+        num_dirs: int, number of directions for ECT calculation.
+        num_thresh: int, number of thresholds for ECT calculation.
+        train_dataset: torch.utils.data.Dataset, training dataset.
+        train_loader: torch.utils.data.DataLoader, training data loader.
+        test_loader: torch.utils.data.DataLoader, test data loader.
+        test_dataset: torch.utils.data.Dataset, test dataset.
+        device: torch.device, device to run the model. Optional, default is 'cuda' if available else 'cpu'.
+        model_path: str, path to the trained model. Optional, default is 'outputs/best_model.pth'.
+        output_cf: str, path to save the confusion matrix plot. Optional, default is 'outputs/confusion_matrix.png'.
+        output_report: str, path to save the classification report. Optional, default is 'outputs/outputCLFreport.csv'.
+        log_level: str or bool, if True or 'INFO', print progress messages.
+    """
+    log_level = log_level == True or str(log_level).upper() == 'INFO'
     trainimages, trainlabels = next(iter(train_loader))
     model = CNN(num_classes=train_dataset.num_classes, num_channels=trainimages.shape[1],input_resolution=(num_dirs,num_thresh))
-    print(model)
+    if log_level:
+        print(model)
     state_dict = torch.load(model_path)['model_state_dict']
     model.load_state_dict(state_dict)
     model.eval()
     model = model.to(device)
-    print('Using validation to compute confusion matrix')
+    if log_level:
+        print('Using validation to compute confusion matrix')
     valid_running_pred = []
     valid_running_labels = []
     counter = 0
     with torch.no_grad():
-        for i, data in tqdm(enumerate(test_loader), total=len(test_loader)):
+        log_tqdm = lambda x: ( tqdm(x, total=len(test_loader)) if log_level else enumerate(x), )[0]
+        for i, data in log_tqdm(test_loader):
             counter += 1
             
             image, labels = data
@@ -241,25 +261,70 @@ def report_trained_model(
     # confusion matrix for the complete epoch
     valid_running_pred = torch.cat(valid_running_pred)
     valid_running_labels = torch.cat(valid_running_labels)
-    print('classes:',test_dataset.classes)
-    save_cf(valid_running_pred.cpu(),valid_running_labels.cpu(), test_dataset.classes)
+    if log_level:
+        print('classes:',test_dataset.classes)
+    save_cf(valid_running_pred.cpu(),valid_running_labels.cpu(), test_dataset.classes, log_level=log_level, out_cf=output_cf, out_report=output_report)
 
 def ect_train_validate(
-        num_dirs, num_thresh, input_path, 
-        output_path="example_data/ect_output", in_memory=False,
+        num_dirs, num_thresh, input_path=None, 
+        output_ect_path="example_data/ect_output", in_memory=False,
+        output_model_path="outputs/best_model.pth",
         num_epochs=50, learning_rate=1e-3, lossfcn=nn.CrossEntropyLoss(),
         batch_size=4, valid_split=0.2, num_workers=0,
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         recompute_ect=True,
         log_level='INFO'
 ):
+    """
+    Function to train and validate the CNN model using the ECT dataset.
+    Usage:
+        ect_train_validate(
+            num_dirs, num_thresh, input_path=None,
+            output_ect_path="example_data/ect_output", in_memory=False,
+            output_model_path="outputs/best_model.pth",
+            num_epochs=50, learning_rate=1e-3, lossfcn=nn.CrossEntropyLoss(),
+            batch_size=4, valid_split=0.2, num_workers=0,
+            device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+            recompute_ect=True, log_level='INFO'
+        )
+    Parameters:
+        num_dirs: int, number of directions for ECT calculation.
+        num_thresh: int, number of thresholds for ECT calculation.
+        input_path: str, path to the input data directory.
+        output_ect_path: str, path to save the ECT dataset. Optional, default is 'example_data/ect_output'.
+        output_model_path: str, path to save the trained model. Optional, default is 'outputs/best_model.pth'.
+        in_memory: bool, if True, the calculated ECT dataset is stored in memory and never written to files. Optional, default is False.
+        num_epochs: int, number of epochs for training. Optional, default is 50.
+        learning_rate: float, learning rate for the optimizer. Optional, default is 1e-3.
+        lossfcn: torch.nn loss function, loss function for the model. 
+            Optional, default is nn.CrossEntropyLoss().
+        batch_size: int, 
+            Number of data loaded per epoch for training. Optional, default is 4.
+            Higher batch size will require more memory and may speed up the training. Howerver, it may cause the model to be stuck in local minima.
+            Lower batch size will require less memory and may slow down the training. However, it may help the model to escape local minima.
+            Smaller the batch size, the more epochs are required to train the model.
+        valid_split: float, 
+            Fractional ratio of data to set aside for validation. Optional, default is 0.2.
+        num_workers: int, 
+            Number of workers for the data loader. Optional, default is 0.
+            Represents the number of cpu cores used for data loading.
+            This is useful for speeding up the data loading step specially when using gpu to train the model.
+            However, it requires more memory.
+        device: torch.device, 
+            Device to run the model.
+        recompute_ect: bool, 
+            If True, compute the ECT dataset. Optional, default is True.
+            If False, the out_path is used as the precomputed ECT dataset.
+        log_level: str or bool,
+            If True or 'INFO', print progress messages.
+    """
     if recompute_ect:
         data = generate_ect_dataset(
-            num_dirs, num_thresh, input_path, in_memory=in_memory, out_path=output_path, log_level=log_level
+            num_dirs, num_thresh, input_path, in_memory=in_memory, out_path=output_ect_path, log_level=log_level
         )
-        data = data if in_memory else output_path
+        data = data if in_memory else output_ect_path
     else:
-        data = output_path
+        data = output_ect_path
     
     log_level = log_level == True or str(log_level).upper() == 'INFO'
 
@@ -290,7 +355,7 @@ def ect_train_validate(
 
         # save the best model up to current epoch, if we have the least loss in the current epoch
         save_best_model(
-            valid_epoch_loss, epoch, model, optimizer, lossfcn
+            valid_epoch_loss, epoch, model, optimizer, lossfcn, output_model_path=output_model_path
         )
         if log_level:
             print('-'*50)
@@ -310,8 +375,20 @@ def ect_train_validate(
     }
     return output
 
-def plot_roc_curve(model, test_loader, test_dataset, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+def plot_roc_curve(model, test_loader, test_dataset, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'), axis=None, output_path="outputs/roc_curve.png"):
+    """
+    Function to plot the ROC curve for the trained model.
+    Usage:
+        plot_roc_curve(model, test_loader, test_dataset, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+    Parameters:
+        model: torch.nn model, trained model.
+        test_loader: torch.utils.data.DataLoader, test data loader.
+        test_dataset: torch.utils.data.Dataset, test dataset.
+        device: torch.device, device to run the model. Optional, default is 'cuda' if available else 'cpu'.
+    """
     from sklearn.metrics import roc_curve, auc
+    if axis is None:
+        ax = plt.figure().add_subplot(111)
     model.eval()
     model = model.to(device)
     print('Using validation to compute ROC curve')
@@ -345,15 +422,16 @@ def plot_roc_curve(model, test_loader, test_dataset, device=torch.device('cuda' 
 
     lw = 2
     for i in range(len(test_dataset.classes)):
-        plt.plot(fpr[i], tpr[i],
+        ax.plot(fpr[i], tpr[i],
                 lw=lw, label='ROC curve of class {0} (area = {1:0.2f})'
                     ''.format(test_dataset.classes[i], roc_auc[i]))
         
-    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
-    plt.legend(loc="lower right")
-    plt.show()
+    ax.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('Receiver Operating Characteristic')
+    ax.legend(loc="lower right")
+    ax.get_figure().savefig(output_path, dpi=300, bbox_inches='tight')
+    return ax

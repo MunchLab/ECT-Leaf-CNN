@@ -10,10 +10,10 @@ import random
 
 plt.style.use('ggplot')
 
-# Make outputs directory
+# # Make outputs directory
 
-if not os.path.exists('outputs'):
-    os.makedirs('outputs')
+# if not os.path.exists('outputs'):
+#     os.makedirs('outputs')
 
 
 
@@ -33,15 +33,18 @@ class SaveBestModel:
     Adapted from https://debuggercafe.com/saving-and-loading-the-best-model-in-pytorch/
     """
     def __init__(
-        self, best_valid_loss=float('inf'), log_level="INFO" #initialize to infinity so the model loss must be less than existing lowest valid loss
-    ):
+        self, best_valid_loss=float('inf'), log_level="INFO", output_model_path = 'outputs/best_model.pth'
+    ): #initialize to infinity so the model loss must be less than existing lowest valid loss
         self.best_valid_loss = best_valid_loss
         self.log_level = log_level == True or str(log_level).upper() == 'INFO'
+        self.output_model_path = output_model_path
         
     def __call__(
         self, current_valid_loss, 
-        epoch, model, optimizer, criterion, output_dir='outputs'
+        epoch, model, optimizer, criterion, output_model_path=None
     ):
+        if output_model_path is None:
+            output_model_path = self.output_model_path
         if current_valid_loss < self.best_valid_loss:
             self.best_valid_loss = current_valid_loss
             if self.log_level:
@@ -51,10 +54,10 @@ class SaveBestModel:
             torch.save({'epoch': epoch,
                         'model_state_dict': model.state_dict(),
                         'optimizer_state_dict': optimizer.state_dict(),
-                         'loss': criterion,}, os.path.join(output_dir,'best_model.pth'))
+                         'loss': criterion,}, output_model_path)
             
 
-def save_model(epochs, model, optimizer, criterion, output_dir='outputs'):
+def save_model(epochs, model, optimizer, criterion, output_model_path = 'outputs/best_model.pth'):
     """
     Function to save the trained model. 
     Adapted from https://debuggercafe.com/saving-and-loading-the-best-model-in-pytorch/
@@ -65,74 +68,115 @@ def save_model(epochs, model, optimizer, criterion, output_dir='outputs'):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': criterion,
-                }, os.path.join(output_dir,'final_model.pth'))
+                }, output_model_path)
     
-
 def save_plots(
       train_acc, valid_acc, train_loss,valid_loss,
+      accuracy = None, loss = None,
       fig_size=(10, 7), dpi=300,
-      output_dir='outputs'):
+      accuracy_path = 'outputs/accuracy.png', loss_path = 'outputs/loss.png'):
     """
     Function to save the loss and accuracy plots.
+    Usage:
+        save_plots(
+            train_acc, valid_acc, train_loss,valid_loss,
+            accuracy = None, loss = None,
+            fig_size=(10, 7), dpi=300,
+            accuracy_path = 'outputs/accuracy.png', loss_path = 'outputs/loss.png'
+        )
+    Parameters:
+        train_acc: list of training accuracy values
+        valid_acc: list of validation accuracy values
+        train_loss: list of training loss values
+        valid_loss: list of validation loss values
+        accuracy: matplotlib axis to plot accuracy. If None, a new figure is created.
+        loss: matplotlib axis to plot loss. If None, a new figure is created.
+        fig_size: tuple, size of the figure. Default is (10, 7)
+        dpi: int, resolution of the figure. Default is 300
+        accuracy_path: str, path to save the accuracy plot. Default is 'outputs/accuracy.png'
+        loss_path: str, path to save the loss plot. Default is 'outputs/loss.png'
     """
     # accuracy plots
-    accuracy = plt.figure(figsize=fig_size)
-    plt.plot(
+    if accuracy is None:
+        accuracy = plt.figure(figsize=fig_size).add_subplot(111)
+    accuracy.plot(
         train_acc, color='green', linestyle='-', 
         label='train accuracy'
     )
-    plt.plot(
+    accuracy.plot(
         valid_acc, color='blue', linestyle='-', 
         label='validataion accuracy'
     )
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.title('Max validation accuracy: '+ "%.2f%%" % (np.max(valid_acc)))
-    plt.savefig(os.path.join(output_dir,'accuracy.png'), dpi=dpi, bbox_inches='tight')
+    accuracy.set_xlabel('Epochs')
+    accuracy.set_ylabel('Accuracy')
+    accuracy.legend()
+    accuracy.set_title('Max validation accuracy: '+ "%.2f%%" % (np.max(valid_acc)))
+    accuracy.get_figure().savefig(accuracy_path, dpi=dpi, bbox_inches='tight')
     
     # loss plots
-    loss = plt.figure(figsize=(10, 7))
-    plt.plot(
+    if loss is None:
+        loss = plt.figure(figsize=fig_size).add_subplot(111)
+    loss.plot(
         train_loss, color='orange', linestyle='-', 
         label='train loss'
     )
-    plt.plot(
+    loss.plot(
         valid_loss, color='red', linestyle='-', 
         label='validataion loss'
     )
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.savefig( os.path.join(output_dir,'loss.png'), dpi=300, bbox_inches='tight')
+    loss.set_xlabel('Epochs')
+    loss.set_ylabel('Loss')
+    loss.legend()
+    loss.get_figure().savefig( loss_path, dpi=300, bbox_inches='tight')
     return accuracy, loss
 
 def save_cf(
       y_pred,y_true,classes,
-      figsize=(12,7), dpi=300,
-      output_dir='outputs'):
+      ax=None,
+      out_cf = 'cf_norm_logscale.png',
+      out_report='outputCLFreport.csv',
+      log_level='INFO'):
     """
     Function to save the confusion matrix plots.
+    Usage:
+        save_cf(
+            y_pred,y_true,classes,
+            ax=None,
+            out_cf = 'cf_norm_logscale.png',
+            out_report='outputCLFreport.csv',
+            log_level='INFO'
+        )
+    Parameters:
+        y_pred: list of predicted labels
+        y_true: list of true labels
+        classes: list of class names
+        ax: matplotlib axis to plot the confusion matrix. If None, a new figure is created.
+        out_cf: str, path to save the confusion matrix plot. Default is 'cf_norm_logscale.png'
+        out_report: str, path to save the classification report. Default is 'outputCLFreport.csv'
+        log_level: str, log level. Default is 'INFO'
     """
     cf_matrix = confusion_matrix(y_true, y_pred, normalize = 'true')
+
+    log_level = log_level == True or str(log_level).upper() == 'INFO'
     
 
     #df_norm = pd.DataFrame(cf_matrix / np.sum(cf_matrix, axis=1)[:, None], index = [i for i in classes],columns = [i for i in classes])
-    plt.figure(figsize = (12,7))
-    sn.heatmap(cf_matrix, annot=True, fmt=".3f", cmap = 'Blues', norm=LogNorm(),xticklabels=classes,yticklabels=classes)
-    plt.xlabel('Predicted Label', weight='bold')
-    plt.ylabel('True Label', weight='bold')
-    plt.savefig(os.path.join(output_dir,'cf_norm_logscale.png'), dpi=300, bbox_inches='tight')
-
+    if ax is None:
+        ax = plt.figure().add_subplot(111)
+    sn.heatmap(cf_matrix, annot=True, fmt=".3f", cmap = 'Blues', norm=LogNorm(),xticklabels=classes,yticklabels=classes, ax=ax)
+    ax.set_xlabel('Predicted Label', weight='bold')
+    ax.set_ylabel('True Label', weight='bold')
+    plt.savefig(out_cf, dpi=300, bbox_inches='tight')
     # SAVE THE CLF REPORT   
     clf_report = pd.DataFrame(classification_report(y_true,y_pred, output_dict=True))
-    clf_report.to_csv(os.path.join(output_dir,'outputCLFreport.csv'))
-    print("Test Result:\n================================================")        
-    print(f"Accuracy Score: {accuracy_score(y_true,y_pred,) * 100:.2f}%")
-    print("_______________________________________________")
-    print(f"CLASSIFICATION REPORT:\n{clf_report}")
-    print("_______________________________________________")
-    print(f"Confusion Matrix: \n {confusion_matrix(y_true,y_pred,)}\n")
+    clf_report.to_csv(out_report)
+    if log_level:
+        print("Test Result:\n================================================")        
+        print(f"Accuracy Score: {accuracy_score(y_true,y_pred,) * 100:.2f}%")
+        print("_______________________________________________")
+        print(f"CLASSIFICATION REPORT:\n{clf_report}")
+        print("_______________________________________________")
+        print(f"Confusion Matrix: \n {confusion_matrix(y_true,y_pred,)}\n")
 
 
 ## TRANSFORMS ####
