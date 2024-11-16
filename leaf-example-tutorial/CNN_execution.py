@@ -37,7 +37,7 @@ def train(
     train_running_correct = 0
     counter = 0
 
-    log_tqdm = lambda x: ( tqdm(x, total=len(train_loader)) if log_level else enumerate(x), )[0]
+    log_tqdm = lambda x: ( tqdm(x, total=len(train_loader)) if log_level else x, )[0]
     for data in log_tqdm(train_loader):
         counter += 1
         image, labels = data
@@ -199,6 +199,7 @@ def report_trained_model(
         train_dataset, train_loader, test_loader, test_dataset,
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         model_path= 'outputs/best_model.pth',
+        ax=None,
         output_cf='outputs/confusion_matrix.png',
         output_report='outputs/outputCLFreport.csv',
         log_level='INFO'
@@ -224,6 +225,7 @@ def report_trained_model(
         test_dataset: torch.utils.data.Dataset, test dataset.
         device: torch.device, device to run the model. Optional, default is 'cuda' if available else 'cpu'.
         model_path: str, path to the trained model. Optional, default is 'outputs/best_model.pth'.
+        ax: Axes, matplotlib figure axis to plot the confusion matrix on.
         output_cf: str, path to save the confusion matrix plot. Optional, default is 'outputs/confusion_matrix.png'.
         output_report: str, path to save the classification report. Optional, default is 'outputs/outputCLFreport.csv'.
         log_level: str or bool, if True or 'INFO', print progress messages.
@@ -263,7 +265,9 @@ def report_trained_model(
     valid_running_labels = torch.cat(valid_running_labels)
     if log_level:
         print('classes:',test_dataset.classes)
-    save_cf(valid_running_pred.cpu(),valid_running_labels.cpu(), test_dataset.classes, log_level=log_level, out_cf=output_cf, out_report=output_report)
+    if ax is None:
+        ax = plt.figure().add_subplot(111)
+    save_cf(valid_running_pred.cpu(),valid_running_labels.cpu(), test_dataset.classes, ax=ax, log_level=log_level, out_cf=output_cf, out_report=output_report)
 
 def ect_train_validate(
         num_dirs, num_thresh, input_path=None, 
@@ -432,6 +436,6 @@ def plot_roc_curve(model, test_loader, test_dataset, device=torch.device('cuda' 
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title('Receiver Operating Characteristic')
-    ax.legend(loc="lower right")
+    ax.legend(loc='lower left',bbox_to_anchor=(1,1))
     ax.get_figure().savefig(output_path, dpi=300, bbox_inches='tight')
     return ax

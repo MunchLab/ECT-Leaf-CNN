@@ -1,5 +1,6 @@
 # Ignore example data
 *leaf_group*
+leaf-example-tutorial/slurm*
 leaf-example-tutorial/example_data/ect_output/
 leaf-example-tutorial/outputs/
 leaf-example-tutorial/data/

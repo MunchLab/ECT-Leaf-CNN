@@ -196,7 +196,7 @@ def save_cf(
     sn.heatmap(cf_matrix, annot=True, fmt=".3f", cmap = 'Blues', norm=LogNorm(),xticklabels=classes,yticklabels=classes, ax=ax)
     ax.set_xlabel('Predicted Label', weight='bold')
     ax.set_ylabel('True Label', weight='bold')
-    plt.savefig(out_cf, dpi=300, bbox_inches='tight')
+    ax.get_figure().savefig(out_cf, bbox_inches='tight')
     # SAVE THE CLF REPORT   
     clf_report = pd.DataFrame(classification_report(y_true,y_pred, output_dict=True))
     clf_report.to_csv(out_report)
