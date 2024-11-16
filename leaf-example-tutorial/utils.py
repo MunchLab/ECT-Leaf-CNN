@@ -16,6 +16,36 @@ plt.style.use('ggplot')
 #     os.makedirs('outputs')
 
 
+def extract_all_files(loc):
+    """
+    Unzips all files in a directory and extracts the .npy files to a folder with the same name as the zip file.
+    """
+    toplevel = [i for i in os.listdir(loc) if not ( i.startswith('.') or i.startswith('2') ) and os.path.isfile(os.path.join(loc,i)) ]
+    classes = {}
+    for i in toplevel:
+        added = False
+        i = i[:-4] # Remove the .zip
+        for j in toplevel:
+            if i == j[:-4]:
+                continue
+            common = os.path.commonprefix([i,j])
+            if len(common) > 5:
+                added = True
+                classes[common] = classes.get(common,[]) + [j]
+        if not added:
+            classes[i] = classes.get(i,[]) + [i+'.zip']
+    [os.makedirs(os.path.join(loc,i), exist_ok=True) for i in classes]
+
+    import zipfile as zp
+
+    for folder, zipfiles in classes.items():
+        for z in zipfiles:
+            with zp.ZipFile(os.path.join(loc,z), 'r') as f:
+                names = f.namelist()
+                for name in names:
+                    if name.endswith('.npy'):
+                        f.extract(name, os.path.join(loc,folder))
+
 
 def reset_weights(m):
   '''
