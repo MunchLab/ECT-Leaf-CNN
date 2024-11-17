@@ -3,6 +3,7 @@ import torchvision.transforms as transforms
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
+from utils import find_numpy_files
 import os
 os.getcwd()
 from utils import ROTATE_TRANSLATE
@@ -50,8 +51,11 @@ class NPYDataset(Dataset):
 
 # Transforms included in utils.py
 def rescale(arr):
-    new_arr = ((arr - arr.min()) * (1/(arr.max() - arr.min()) * 255)).astype('uint8')
-    return new_arr
+    min_val = arr.min()
+    max_val = arr.max()
+    if max_val == min_val:
+        return arr
+    return  ( (arr - min_val) / ( (max_val - min_val) * 255) ).astype('uint8')
     
 # function to create the datasets
 def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VALID_SPLIT, log_level='INFO'):
@@ -83,40 +87,18 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
     # image_path = os.getcwd()+'/example_data/ect_output/'
     
     # Dict to map class names to indices
-    classes = []
-    for (dirpath, dirnames, filenames) in os.walk(image_path):
-        if log_level:
-            print(dirnames)
-        classes.extend(dirnames)
-        break
-    idx_to_class = {i:j for i, j in enumerate(classes)}
-    class_to_idx = {value:key for key,value in idx_to_class.items()}
+    classes = [ dir_name for dir_name in os.listdir(image_path) if os.path.isdir(os.path.join(image_path, dir_name)) ]
+    class_to_idx = {j:i for i, j in enumerate(classes)}
     num_classes = len(classes)
     if log_level:
         print('num_classes=',num_classes)
 
-    classes_count=[0 for c in classes]
-    for path, subdirs, files in os.walk(image_path):
-        
-        files = [f for f in files if not f[0] == '.']
-        subdirs[:] = [d for d in subdirs if not d[0] == '.']
-        
-        for name in files:
-            input_filedir = os.path.join(path, name)
-            image = rescale(np.load(input_filedir))
+    np_files = { class_name: find_numpy_files( os.path.join(image_path, class_name) ) for class_name in classes }
+    np_data = [ (rescale(np.load(np_file)), class_name) for class_name, file_list in np_files.items() for np_file in file_list ]
+    
 
-            splitpath = os.path.normpath(input_filedir).split(os.path.sep)
-            label = list(set(splitpath).intersection(classes))[0]
-            
-            #if classes_count[class_to_idx[label]]< 50:
-            if True:
-                numpy_data.append(image)
-                numpy_target.append(class_to_idx[label])
-                classes_count[class_to_idx[label]]+=1
-                
-            
-    numpy_data = np.float32(numpy_data)
-    numpy_target = np.float32(numpy_target)
+    numpy_data = np.float32( [i[0] for i in np_data] )
+    numpy_target = np.float32( [class_to_idx[i[1]] for i in np_data] )
    
     train, valid_data, y_train, y_valid = train_test_split(numpy_data, numpy_target, test_size=valid_split, shuffle=True)
 

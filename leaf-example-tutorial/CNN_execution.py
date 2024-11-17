@@ -14,7 +14,7 @@ from multiprocessing import cpu_count
 # from itertools import starmap
 
 from dataloaders import create_data_loaders, create_datasets
-from utils import save_model, save_plots, save_cf, SaveBestModel
+from utils import save_model, save_plots, save_cf, SaveBestModel, find_numpy_files
 from models import CNN
 
 from sklearn.metrics import roc_curve, auc
@@ -100,14 +100,6 @@ def validate(
 
     return epoch_loss, epoch_acc
 
-# Walk through the full directory structure and find all the numpy files.
-def find_numpy_files(directory):
-    numpy_files = []
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.npy'):
-                numpy_files.append(os.path.join(root, file))
-    return numpy_files
 
 # Compute the ECT for given numpy file.
 def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_level="INFO", global_bound_radius=2.9092515639765497):

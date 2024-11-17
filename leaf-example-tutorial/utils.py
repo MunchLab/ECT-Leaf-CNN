@@ -46,6 +46,14 @@ def extract_all_files(loc):
                     if name.endswith('.npy'):
                         f.extract(name, os.path.join(loc,folder))
 
+# Walk through the full directory structure and find all the numpy files.
+def find_numpy_files(directory):
+    numpy_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.npy'):
+                numpy_files.append(os.path.join(root, file))
+    return numpy_files
 
 def reset_weights(m):
   '''
