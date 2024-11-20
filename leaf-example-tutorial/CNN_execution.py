@@ -7,9 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch
 
-# Test if this speeds up the ECT calculation on hpcc.
-from concurrent.futures import ThreadPoolExecutor as ThreadPool
-from multiprocessing import cpu_count
+# Test if this speeds up the ECT calculation on hpcc
+from multiprocessing import cpu_count, Pool
 
 # from itertools import starmap
 
@@ -102,7 +101,7 @@ def validate(
 
 
 # Compute the ECT for given numpy file.
-def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_level="INFO", global_bound_radius=2.9092515639765497):
+def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_level="INFO"):
     from ect import ECT, EmbeddedGraph
 
     if log_level:
@@ -114,7 +113,7 @@ def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_
     G.set_PCA_coordinates( center_type='min_max', scale_radius=1 )
     
     ect = ECT(num_dirs=num_dirs, num_thresh=num_thresh)
-    ect.set_bounding_radius(global_bound_radius)
+    ect.set_bounding_radius(1)
     ect.calculateECT(G)
     
     if out_file is None:
@@ -124,7 +123,7 @@ def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_
         np.save(out_file, ect.get_ECT())
 
 # Function to generate the ect dataset.
-def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ect_output/', global_bound_radius=2.9092515639765497, in_memory=False, log_level='INFO'):
+def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ect_output/', parallel=True, in_memory=False, log_level='INFO'):
     '''
     Generate the ECT dataset for the given input data.
     The input data should be in numpy format.
@@ -179,7 +178,11 @@ def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ec
             for ll, file_path in zip(lls, files)
     ]
     
-    ects = [ compute_ect(*i) for i in ect_arguments ]
+    if not parallel:
+        ects = [ compute_ect(*i) for i in ect_arguments ]
+    else:
+        with Pool() as pool:
+            ects = pool.starmap(compute_ect, ect_arguments)
     
     if in_memory:
         data = {a:b for a,b in ects}

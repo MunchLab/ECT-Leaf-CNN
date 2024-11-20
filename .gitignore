@@ -2,10 +2,12 @@
 *leaf_group*
 leaf-example-tutorial/slurm*
 leaf-example-tutorial/example_data/ect_output/
-leaf-example-tutorial/outputs/
+leaf-example-tutorial/outputs
 leaf-example-tutorial/data/
 leaf-example-tutorial/example_data/outputs
-leaf-example-tutorial/example_data/*.*
+leaf-example-tutorial/example_data
+*DS_Store*
+*.npy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

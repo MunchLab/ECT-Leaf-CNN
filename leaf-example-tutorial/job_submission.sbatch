@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --gpus=1
-#SBATCH -c 20
+#SBATCH -c 128
 #SBATCH --mem=256G
-#SBATCH --time=1:00:00
+#SBATCH --time=4-0:00:00
 
+# SLURM <-- 
 module purge
 module load Miniforge3
 
@@ -12,4 +13,4 @@ conda activate Jupyter
 
 # Replace with your juypter kernel name. To get the kernel name, run `jupyter kernelspec list` once you have activated the Jupyter environment.
 kernel_name=ect_cnn.gpu
-jupyter nbconvert test_ECT_Direction_and_Threshold_Learning.ipynb --to html --embed-images --ExecutePreprocessor.kernel_name=$kernel_name --execute
+jupyter nbconvert final.ipynb --to html --embed-images --ExecutePreprocessor.kernel_name=$kernel_name --execute
