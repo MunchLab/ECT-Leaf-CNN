@@ -1,8 +1,10 @@
 #!/bin/bash
 #SBATCH --gpus=1
-#SBATCH -c 128
-#SBATCH --mem=256G
+#SBATCH --constraint="a100|v100"
+#SBATCH -c 16
+#SBATCH --mem-per-cpu=750M
 #SBATCH --time=4-0:00:00
+#SBATCH -J tops
 
 # SLURM <-- 
 module purge

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../../.conda/envs/ECT_CNN.cpu/lib/python3.12/site-packages/ect"
+		},
+		{
+			"path": "../../../.conda/envs/ECT_CNN.gpu/lib/python3.12/site-packages/ect"
+		}
+	],
+	"settings": {}
+}

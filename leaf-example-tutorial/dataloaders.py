@@ -55,7 +55,8 @@ def rescale(arr):
     max_val = arr.max()
     if max_val == min_val:
         return arr
-    return  ( (arr - min_val) / ( (max_val - min_val) * 255) ).astype('uint8')
+    arr = ( (arr - min_val) / (max_val - min_val) * 255 ).astype(np.uint8)
+    return  arr
     
 # function to create the datasets
 def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VALID_SPLIT, log_level='INFO'):
@@ -67,11 +68,11 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
 
     log_level = log_level == True or str(log_level).upper() == 'INFO'
     
-    if type(data) == dict:
+    if isinstance(data, dict):
         classes = list(data.keys())
         for i, category in enumerate(data):
             for img in data[category]:
-                numpy_data.append( img )
+                numpy_data.append( rescale(img) )
                 numpy_target.append( i )
         numpy_data = np.float32(numpy_data)
         numpy_target = np.float32(numpy_target)
@@ -106,6 +107,8 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
         print('ECT data; using only normalize, rotation transforms on training data')
     train_data = NPYDataset(train, y_train, classes, transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize(0.5,0.5), ROTATE_TRANSLATE()]))   
     valid_data = NPYDataset(valid_data, y_valid, classes, transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize(0.5,0.5), ROTATE_TRANSLATE()]))
+
+    
 
     return train_data, valid_data
 

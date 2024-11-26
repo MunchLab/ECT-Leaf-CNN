@@ -48,6 +48,9 @@ def extract_all_files(loc):
 
 # Walk through the full directory structure and find all the numpy files.
 def find_numpy_files(directory):
+    """
+    Function to find all the numpy files in a directory.
+    Returns a list of all the numpy files with paths joined with the root directory."""
     numpy_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:

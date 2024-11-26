@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 import matplotlib.pyplot as plt
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 import torch
@@ -102,6 +102,15 @@ def validate(
 
 # Compute the ECT for given numpy file.
 def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_level="INFO"):
+
+    target_file = os.path.join(str(out_file), class_name, os.path.basename(file_path))
+    out_file = target_file if out_file is not None else None
+    
+    if os.path.exists(str(target_file)) and out_file is not None:
+        return class_name, np.load(out_file)
+    elif os.path.exists(str(target_file)):
+        return
+
     from ect import ECT, EmbeddedGraph
 
     if log_level:
@@ -114,16 +123,15 @@ def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_
     
     ect = ECT(num_dirs=num_dirs, num_thresh=num_thresh)
     ect.set_bounding_radius(1)
-    ect.calculateECT(G)
+    val = ect.calculateECT(G)
     
     if out_file is None:
-        return class_name, ect.get_ECT()
+        return class_name, val
     else:
-        out_file = os.path.join(out_file, class_name, os.path.basename(file_path))
-        np.save(out_file, ect.get_ECT())
+        np.save(out_file, val)
 
 # Function to generate the ect dataset.
-def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ect_output/', parallel=True, in_memory=False, log_level='INFO'):
+def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ect_output/', parallel=True, n_workers=None, in_memory=False, log_level='INFO'):
     '''
     Generate the ECT dataset for the given input data.
     The input data should be in numpy format.
@@ -134,7 +142,7 @@ def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ec
         num_thresh: int, number of thresholds for ECT calculation.
         in_path: str, path to the input data directory.
         out_path: str, path to save the ECT dataset. Optional, default is 'example_data/ect_output/'.
-        global_bound_radius: float, global bounding radius for the ECT calculation. Optional, default is 2.9092515639765497.
+        Parallel: bool, If True, use parallel processing to compute ECTs. Optional, default is True. requires additional n_workers argument. Defaults to using all available cpu cores.
         in_memory: bool,
             If True, the calculated ECT dataset is returned as a dictionary with class names as key and list of numpy arrays as the values.
             ECTs are not written to files. Optional, default is False.
@@ -176,17 +184,40 @@ def generate_ect_dataset(num_dirs,num_thresh, in_path, out_path='example_data/ec
         (class_name, file_path, num_dirs, num_thresh, out_file_root, ll)
             for lls, (class_name, files) in zip( log_levels, input_numpy_files.items() )
             for ll, file_path in zip(lls, files)
-    ]
-    
+    ]            
+
     if not parallel:
         ects = [ compute_ect(*i) for i in ect_arguments ]
     else:
-        with Pool() as pool:
+        n_workers = n_workers if n_workers is not None else cpu_count()
+        with Pool(n_workers) as pool:
             ects = pool.starmap(compute_ect, ect_arguments)
     
     if in_memory:
         data = {a:b for a,b in ects}
-    return data if in_memory else None
+        return data
+    else:
+        existing_class_items = {
+            class_name: find_numpy_files(os.path.join(out_path, class_name))
+                for class_name in input_numpy_files.keys() 
+        }
+
+        extra_class_items = { d:find_numpy_files(os.path.join(out_path, d)) for d in os.listdir(out_path) if d not in input_numpy_files }
+        print( "Found extra class items:", list(extra_class_items) )
+        print( "Removing them!")
+
+        for files in extra_class_items.values():
+            for file in files:
+                os.remove(file)
+
+        for class_name, files in existing_class_items.items():
+            basename_files = [ os.path.basename(file) for file in input_numpy_files.get(class_name,[]) ]
+            for file in files:
+                if os.path.basename(file) not in basename_files:
+                    print( "Removing:", file )
+                    os.remove(file)
+                else:
+                    print( file, basename_files)
 
 # model, valid_loader, lossfcn
 def report_trained_model(
@@ -269,6 +300,7 @@ def ect_train_validate(
         output_ect_path="example_data/ect_output", in_memory=False,
         output_model_path="outputs/best_model.pth",
         num_epochs=50, learning_rate=1e-3, lossfcn=nn.CrossEntropyLoss(),
+        parallel=False, 
         batch_size=4, valid_split=0.2, num_workers=0,
         device=torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
         recompute_ect=True,
@@ -293,6 +325,7 @@ def ect_train_validate(
         output_ect_path: str, path to save the ECT dataset. Optional, default is 'example_data/ect_output'.
         output_model_path: str, path to save the trained model. Optional, default is 'outputs/best_model.pth'.
         in_memory: bool, if True, the calculated ECT dataset is stored in memory and never written to files. Optional, default is False.
+        parallel: bool, if True, use parallel processing to compute ECTs. Optional, default is False.
         num_epochs: int, number of epochs for training. Optional, default is 50.
         learning_rate: float, learning rate for the optimizer. Optional, default is 1e-3.
         lossfcn: torch.nn loss function, loss function for the model. 
@@ -318,18 +351,51 @@ def ect_train_validate(
             If True or 'INFO', print progress messages.
     """
     if recompute_ect:
+        if log_level:
+            print('Computing ECT dataset by clearing out the output directory')
+        try:
+            for directory in os.listdir(output_ect_path):
+                directory = os.path.join(output_ect_path, directory)
+                if os.path.isdir(directory):
+                    for files in find_numpy_files(directory):
+                        os.remove(files)
+                try:
+                    os.rmdir(directory)
+                except:
+                    pass
+        except:
+            Warning('Could not clear the output directory. This might cause issues with CNN training.')
         data = generate_ect_dataset(
-            num_dirs, num_thresh, input_path, in_memory=in_memory, out_path=output_ect_path, log_level=log_level
+            num_dirs, num_thresh, input_path, in_memory=in_memory, out_path=output_ect_path, log_level=log_level, parallel=parallel, n_workers=num_workers
         )
         data = data if in_memory else output_ect_path
     else:
-        data = output_ect_path
+        data = generate_ect_dataset(
+            num_dirs, num_thresh, input_path, in_memory=in_memory, out_path=output_ect_path, log_level=log_level, parallel=parallel, n_workers=num_workers
+        )
+        data = data if in_memory else output_ect_path
     
     log_level = log_level == True or str(log_level).upper() == 'INFO'
 
     train_dataset, test_dataset = create_datasets(data, valid_split, log_level)
     train_loader, test_loader = create_data_loaders(train_dataset, test_dataset, batch_size, num_workers)
-    trainimages, _ = next(iter(train_loader))
+    trainimages, trainlabels = next(iter(train_loader))
+
+    if len(trainimages) < 9:
+        x,y = 2,2
+    else:
+        x,y = 3,3
+    fig, axes = plt.subplots(x,y)
+    axes = axes.flatten()
+    [ (ax.get_xaxis().set_visible(False),ax.get_yaxis().set_visible(False)) for ax in axes ]
+    [ s.set_visible(False) for ax in axes for s in ax.spines.values() ]
+    images = np.random.choice( len(trainimages), x*y, replace=False )
+    for i in range(x*y):
+        axes[i].imshow( trainimages[images[i]].numpy().reshape(num_dirs, num_thresh ).T )
+        axes[i].set_title(train_dataset.get_label(trainlabels[images[i]].item()))
+    fig.tight_layout()
+    fp = os.path.dirname(output_model_path)
+    fig.savefig(f'{fp}/sample_data.png')
     
     model = CNN(num_classes=train_dataset.num_classes, num_channels=trainimages.shape[1],input_resolution=(num_dirs,num_thresh)).to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-3)
@@ -431,6 +497,6 @@ def plot_roc_curve(model, test_loader, test_dataset, device=torch.device('cuda' 
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
     ax.set_title('Receiver Operating Characteristic')
-    ax.legend(loc='lower left',bbox_to_anchor=(1,1))
+    ax.legend(loc='lower left',bbox_to_anchor=(1,0))
     ax.get_figure().savefig(output_path, dpi=300, bbox_inches='tight')
     return ax
