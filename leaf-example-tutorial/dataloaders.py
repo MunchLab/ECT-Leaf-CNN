@@ -74,8 +74,8 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
                 ects_to_rotate = np.random.choice( ects_indices, largest_class - len(ects_indices) )
                 ects_to_rotate = [ ects[j] for j in ects_to_rotate ]
                 for img in ects_to_rotate:
-                    rotate_by = np.random.choice( range( img.shape"""index_of_shape""" ) ) )
-                    np_dat = np.roll( """roll_code""" )
+                    # rotate_by = np.random.choice( range( img.shape"""index_of_shape""" ) )
+                    # np_dat = np.roll( """roll_code""" )
                     numpy_data.append( rescale(np_dat) )
                     numpy_target.append( i )
             for img in data[ects]:
@@ -112,10 +112,10 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
             files_to_rotate = np.random.choice( file_list, largest_class - len(file_list) )
             for np_file in rotated_ects:
                 np_dat = np.load( np_file )
-                rotate_by = np.random.choice( range( np_dat.shape"""index_of_shape""" ) ) )
+                # rotate_by = np.random.choice( range( np_dat.shape"""index_of_shape""" ) )
                 file_name = os.path.basename( np_file ).replace(".npy","")
                 file_name = f"{file_name}.{rotate_by}.npy"
-                np_dat = np.roll( """roll_code""" )
+                # np_dat = np.roll( """roll_code""" )
                 np.save( file_name, np_dat ) 
                 np_data.append( (np_dat, class_name) )
                 
