@@ -12,10 +12,6 @@ BATCH_SIZE = 4
 VALID_SPLIT = 0.2
 NUM_WORKERS = 0
 
-
-
-
-
 #Dataset class for numpy array data (ECT, SECT)
 class NPYDataset(Dataset):
     def __init__(self, data, target, classes, transform=None):
@@ -57,9 +53,9 @@ def rescale(arr):
         return arr
     arr = ( (arr - min_val) / (max_val - min_val) * 255 ).astype(np.uint8)
     return  arr
-    
+
 # function to create the datasets
-def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VALID_SPLIT, log_level='INFO'):
+def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VALID_SPLIT, log_level='INFO', balance=False):
     """
     Function to load in images (ect or outline) to dataset
     """
@@ -70,8 +66,19 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
     
     if isinstance(data, dict):
         classes = list(data.keys())
-        for i, category in enumerate(data):
-            for img in data[category]:
+        largest_class = max( len(ects) for ects in data.values() )
+        for i, ects in enumerate(data):
+            # Adding np.roll by random amount to balance the number of data for each class by rotating ect images (using translation in the direction axis)
+            if balance and len(ects) < largest_class:
+                ects_indices = list( range( len( ects ) ) )
+                ects_to_rotate = np.random.choice( ects_indices, largest_class - len(ects_indices) )
+                ects_to_rotate = [ ects[j] for j in ects_to_rotate ]
+                for img in ects_to_rotate:
+                    rotate_by = np.random.choice( range( img.shape"""index_of_shape""" ) ) )
+                    np_dat = np.roll( """roll_code""" )
+                    numpy_data.append( rescale(np_dat) )
+                    numpy_target.append( i )
+            for img in data[ects]:
                 numpy_data.append( rescale(img) )
                 numpy_target.append( i )
         numpy_data = np.float32(numpy_data)
@@ -95,7 +102,26 @@ def create_datasets(data=os.getcwd()+'/example_data/ect_output/', valid_split=VA
         print('num_classes=',num_classes)
 
     np_files = { class_name: find_numpy_files( os.path.join(image_path, class_name) ) for class_name in classes }
-    np_data = [ (rescale(np.load(np_file)), class_name) for class_name, file_list in np_files.items() for np_file in file_list ]
+    largest_class = max( [ len(file_list) for file_list in np_files.items() ] )
+    np_data = []
+    for class_name, file_list in np_files.items():
+
+        # Adding np.roll by random amount to balance the number of data for each class by rotating ect images (using translation in the direction axis)
+        if balance and len(file_list) < largest_class:
+            common_path = os.path.commonpath( file_list )
+            files_to_rotate = np.random.choice( file_list, largest_class - len(file_list) )
+            for np_file in rotated_ects:
+                np_dat = np.load( np_file )
+                rotate_by = np.random.choice( range( np_dat.shape"""index_of_shape""" ) ) )
+                file_name = os.path.basename( np_file ).replace(".npy","")
+                file_name = f"{file_name}.{rotate_by}.npy"
+                np_dat = np.roll( """roll_code""" )
+                np.save( file_name, np_dat ) 
+                np_data.append( (np_dat, class_name) )
+                
+        for np_file in file_list:
+            np_dat = np.load(np_file)
+            np_data.append( (np_dat, class_name) )
     
 
     numpy_data = np.float32( [i[0] for i in np_data] )

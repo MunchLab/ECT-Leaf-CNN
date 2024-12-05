@@ -102,8 +102,10 @@ def validate(
 
 # Compute the ECT for given numpy file.
 def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_level="INFO"):
-
-    target_file = os.path.join(str(out_file), class_name, os.path.basename(file_path))
+    if isinstance(file_path, np.ndarray):
+        target_file = None
+    else:
+        target_file = os.path.join(str(out_file), class_name, os.path.basename(file_path))
     out_file = target_file if out_file is not None else None
     
     if os.path.exists(str(target_file)) and out_file is not None:
@@ -117,7 +119,7 @@ def compute_ect(class_name, file_path, num_dirs, num_thresh, out_file=None, log_
         print(f'Computing ECT for {class_name}')
 
     G = EmbeddedGraph()
-    coords = np.load(file_path)
+    coords = file_path if isinstance(file_path, np.ndarray) else np.load(file_path)
     G.add_cycle(coords)
     G.set_PCA_coordinates( center_type='min_max', scale_radius=1 )
     
